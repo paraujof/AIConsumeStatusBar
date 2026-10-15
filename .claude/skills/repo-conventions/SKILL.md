@@ -5,41 +5,52 @@ description: Folder structure, code style, naming, and the exact commands to bui
 
 # Repo conventions
 
-State of the repo when this was written (2026-10-15): **empty** — no commits, no source,
-no build files, no CI, no CLAUDE.md, no ADRs. Machine toolchain seen: Swift 6.4 (Command
-Line Tools, no Xcode) and python3. The repo name (`ai-consume-status-bar`) suggests a
-macOS status-bar app, but nothing confirms the stack. Fill in every TODO before the first run.
+Established by the ADR of work item `req-20261015-macos-status-bar-token-usage` (Decision §12),
+approved at TL_GATE on 2026-10-15. Machine toolchain: Swift 6.4 via Command Line Tools only
+(no Xcode).
 
 If a command below is still a TODO when an agent needs it, the agent writes
 `BLOCKED: repo-conventions does not define <command>` and stops. Never guess a command.
 
 ## Stack
-- Language / version: TODO(team)
-- Framework / UI toolkit: TODO(team)
-- Package manager / dependency manifest: TODO(team) (Snyk vulnerabilities are fixed here)
+- Language / version: Swift 6 language mode (strict concurrency), `swift-tools-version: 6.0`, toolchain Swift 6.4.
+- Framework / UI toolkit: AppKit (`NSStatusItem` + `NSMenu`), no SwiftUI. Minimum macOS 13.0.
+- Package manager / dependency manifest: Swift Package Manager — `Package.swift`
+  (`Package.resolved` only if a dependency is ever added). No third-party dependencies.
+- Test framework: Swift Testing (`import Testing`). XCTest is **not** available with Command Line Tools only.
 
 ## Commands
+Swift Testing's macro plugin is not found automatically under Command Line Tools
+(`plugin for module 'TestingMacros' not found`). Every command that compiles tests MUST pass
+the plugin path (verified 2026-10-15):
+
+`TESTING_PLUGIN = -Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`
+
 | Purpose | Command |
 |---|---|
-| Install deps | TODO(team) |
-| Build | TODO(team) |
-| Full test suite | TODO(team) |
-| Run tests in one folder (`tests/<id>/`) | TODO(team) |
-| Lint | TODO(team) |
-| Format | TODO(team) |
-| Type check (if separate) | TODO(team) |
+| Install deps | `swift package resolve` (no-op today) |
+| Build | `swift build` |
+| Full test suite | `swift test -Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing` |
+| Run tests in one folder (`tests/<id>/`) | `swift test -Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing --filter Acceptance_<id with "-" replaced by "_">` |
+| Lint | `swift format lint --strict --recursive Package.swift Sources tests` |
+| Format | `swift format --in-place --recursive Package.swift Sources tests` |
+| Type check (if separate) | covered by `swift build` |
+| Build app bundle | `scripts/build-app.sh` |
 
 ## Folder structure
-- Source: TODO(team)
-- Tests: TODO(team) — the multi-agent flow puts acceptance tests of each work item in
-  `tests/<id>/`; the test runner must discover that folder (TODO(team): confirm/configure).
-- Architecture decisions: `docs/adr/NNNN-<slug>.md` (proposed; TODO(team): confirm).
+- Source: `Sources/<Target>/` (targets: `TokenUsageCore`, `TokenUsageData`, `AIConsumeStatusBar`).
+- Unit tests: `tests/unit/<Target>Tests/` (owned by the implementer).
+- Acceptance tests: `tests/<id>/`, one SwiftPM test target per work item named
+  `Acceptance_<id with "-" replaced by "_">`, depending on every library target. The implementer
+  declares the target in `Package.swift`; only ac-tester writes inside the folder.
+- Only lowercase `tests/` is used (the disk is case-insensitive; never create `Tests/`).
+- Architecture decisions: `docs/adr/NNNN-<slug>.md`.
 - Agent run artifacts: `.agents/runs/<id>/` (gitignored, never committed).
 
 ## Style and naming
-- Formatter / style guide: TODO(team)
-- File naming: TODO(team)
-- Type / function / variable naming: TODO(team)
+- Formatter / style guide: `swift format` with `.swift-format` at the repo root, 4-space indent, line length 120.
+- File naming: one type per file, file named after the type.
+- Type / function / variable naming: types `UpperCamelCase`; functions and variables `lowerCamelCase`.
 - Test naming: one test per AC scenario, named after the scenario title.
 
 ## Git
